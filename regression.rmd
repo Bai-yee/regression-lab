@@ -1,11 +1,13 @@
 ---
-title: "Untitled"
-output: html_document
+title: "回归分析"
+author: "黄赫堂 2020201415"
+date: "2024-12-18"
 ---
 # 回归分析
 ## 加载包
 ```{r}
 library(readxl)
+library(dplyr)
 ```
 
 ## 读取数据
@@ -16,48 +18,72 @@ summary(salary)
 
 ## 处理数据
 ```{r}
-### 首先写入自定义顺序
+### 公司规模哑变量赋值
 
-ordered_item <- c("100以下", "100-499", "500以上")
+dummy_scale <- model.matrix(~ salary$公司规模 - 1, data=salary)
+salary <- cbind(salary, dummy_scale)
+salary <- subset(salary,select = -公司规模)
+```
 
-ordered_item <- factor(1:length(ordered_item), labels = ordered_item)
 
-### 然后对数据框df中的item字段进行自定义顺序排列
+```{r}
+### 已有工作经验哑变量赋
 
-salary$scale_factor <- factor(
-  salary$scale,
-  levels = levels(ordered_item),
-  labels = c(1, 2, 3)
-)
-
-### 重复以上步骤
-
-ordered_item <- c("经验不限", "1年以内", "1-3年", "3-5年", "5年以上")
-
-ordered_item <- factor(1:length(ordered_item), labels = ordered_item)
-
-salary$experience_factor <- factor(salary$working_experience, levels = levels(ordered_item), labels = c(1, 2, 3, 4, 5))
-
-ordered_item <- c("学历不限", "高中及以下", "大专", "本科", "研究生")
-
-ordered_item <- factor(1:length(ordered_item), labels = ordered_item)
-
-salary$education_factor <- factor(salary$education, levels = levels(ordered_item), labels = c(1, 2, 3, 4, 5))
+dummy_experience <- model.matrix(~ salary$已有工作经验 - 1, data=salary)
+salary <- cbind(salary, dummy_experience)
+salary <- subset(salary,select = -已有工作经验)
 ```
 
 ```{r}
-### 将category和industry两列转换为哑变量
+### 学历哑变量赋值
+dummy_degree <- model.matrix(~ salary$学历 - 1, data=salary)
+salary <- cbind(salary, dummy_degree)
+salary <- subset(salary,select = -学历)
+```
 
-salary <- cbind(salary, as.data.frame(model.matrix(~ category - 1, salary)))
-salary <- cbind(salary, as.data.frame(model.matrix(~ industry - 1, salary)))
-```
 ```{r}
-salary$welfare_num <- as.numeric(salary$welfare)
+### 融资阶段哑变量赋值
+dummy_phase <- model.matrix(~ salary$融资阶段 - 1, data=salary)
+salary <- cbind(salary, dummy_phase)
+salary <- subset(salary,select = -融资阶段)
 ```
-```{r,message=FALSE,warning=FALSE,collapse=TRUE}
-y <- salary$income
-x <- salary[, 11:36]
-data <- cbind(y, x)
-myfit0 <- lm(y ~ ., data = data)
-summary(myfit0)
+
+```{r}
+### 福利哑变量赋值
+salary <- salary %>% 
+  mutate(福利 = case_when(
+      福利 == TRUE ~ 1,
+      福利 == FALSE ~ 0,
+      TRUE ~ 福利
+    ))
+salary$福利 <- as.integer(salary$福利)
+```
+
+```{r}
+### 位置哑变量赋值
+dummy_location <- model.matrix(~ salary$位置 - 1, data=salary)
+salary <- cbind(salary, dummy_location)
+salary <- subset(salary,select = -位置)
+```
+
+```{r}
+### 公司行业哑变量赋值
+dummy_industry <- model.matrix(~ salary$公司行业 - 1, data=salary)
+salary <- cbind(salary, dummy_industry)
+salary <- subset(salary,select = -公司行业)
+```
+
+```{r}
+### 职业类别哑变量赋值
+dummy_category <- model.matrix(~ salary$职业类别 - 1, data=salary)
+salary <- cbind(salary, dummy_category)
+salary <- subset(salary,select = -职业类别)
+salary <- subset(salary,select = - 职位)
+salary <- subset(salary,select = - 年薪)
+```
+## 保存处理后的数据
+
+```{r}
+# 保存处理后的数据
+write_xlsx(salary, "data_variables.xlsx")
 ```
